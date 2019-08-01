@@ -1,42 +1,68 @@
-var express = require("express");
-var app = express();
-var bodyParser = require("body-parser");
+var express = require("express"), 
+	app = express(), 
+	bodyParser = require("body-parser"),
+	mongoose = require("mongoose");
 
+
+mongoose.connect("mongodb://localhost/cities_db");
 app.use(bodyParser.urlencoded({extended: true}));
 
 app.set("view engine", "ejs");
 
-var cities = 
-	[
-		{name: "Tokyo", image: "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c0/Tokyo_Tower_and_around_Skyscrapers.jpg/238px-Tokyo_Tower_and_around_Skyscrapers.jpg"},
-		{name: "Hong Kong", image: "https://www.nationsonline.org/gallery/Hong-Kong/Hong-Kong-skyline-at-night.jpg" },
-		{name: "Santorini", image: "http://www.visitgreece.gr/deployedFiles/StaticFiles/Photos/Generic%20Contents/Nisia/santorini_2_view_560.jpg"}
-	];
+var citySchema = new mongoose.Schema({
+	name: String,
+	image: String,
+	description: String
+});
+
+var City = mongoose.model("City", citySchema);
 
 app.get("/", function(req, res) {
 	res.render("landing");
 });
 
 app.get("/cities", function(req, res) {
-	
-
-	res.render("cities", {cities: cities});
+	City.find({}, function(err, allcities) {
+		if (err) {
+			console.log(err);
+		} else {
+			res.render("index", {cities: allcities});
+		}
+	});
 });
 
 // create a post route
 app.post("/cities", function(req, res) {
-	var name = req.body.name
+	var name = req.body.name;
 	var image = req.body.image;
-	var newCity = {name: name, image: image}
-	cities.push(newCity);
-	// redirect back to city page back to get
-	res.redirect("/cities");
+	var desc = req.body.description;
+	var newCity = {name: name, image: image, description: desc};
+	// Create new city and save to DB
+	City.create(newCity, function(err, newlyCreated) {
+		if (err) {
+			console.log(err);
+		} else {
+			res.redirect("/cities");
+		}
+	});
 });
 
 // shows the form that sends data to post route
 app.get("/cities/new", function(req, res) {
-	res.render("new.ejs")
+	res.render("new.ejs");
 });
 
-var port = process.env.port || 3000;
-app.listen(3000);
+// SHOW - shows more info
+app.get('/cities/:id', function(req, res) {
+	City.findById(req.params.id, function(err, foundCity){
+		if(err) {
+			console.log(err);
+		} else {
+			res.render("show", {city: foundCity});
+		}
+	});
+	// find the city with id and then render show template with city
+});
+
+var port = process.env.port || 9000;
+app.listen(9000);
